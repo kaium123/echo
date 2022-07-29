@@ -1,6 +1,7 @@
 package utility
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
@@ -37,9 +38,12 @@ func Update(product model.Product, req model.Product) model.Product {
 func CheckErrorUpdate(req model.Product) []string {
 	var str []string
 	err := validate.Struct(req)
+	fmt.Println(req)
 
 	if err != nil {
+		//i := 0
 		for _, err := range err.(validator.ValidationErrors) {
+
 			if err.Kind() == reflect.String {
 				if err.Value() != "" {
 					tmp := "Invalid "
@@ -49,7 +53,9 @@ func CheckErrorUpdate(req model.Product) []string {
 			}
 
 			if err.Kind() == reflect.Int32 {
-				if err.Value() != 0 {
+				val := err.Value()
+				var zero int32 = 0
+				if val != zero {
 					tmp := "Invalid "
 					tmp += err.StructField()
 					str = append(str, tmp)

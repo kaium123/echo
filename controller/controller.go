@@ -15,7 +15,7 @@ import (
 var validate = validator.New()
 
 func Get(c echo.Context) error {
-	product, _, err := UserGetById(c)
+	product, err := UserGetById(c)
 	if err != nil {
 		return c.JSON(http.StatusOK, "That product not found")
 	}
@@ -43,24 +43,24 @@ func Post(c echo.Context) error {
 	return c.JSON(http.StatusOK, req)
 }
 
-func UserGetById(c echo.Context) (model.Product, int, error) {
+func UserGetById(c echo.Context) (model.Product, error) {
 
 	var tmp model.Product
 	idx, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return tmp, idx, err
+		return tmp, err
 	}
 
 	tmp, err = repository.SearchById(idx)
 	if err != nil {
-		return tmp, idx, err
+		return tmp, err
 	}
 
-	return tmp, idx, nil
+	return tmp, nil
 }
 
 func Update(c echo.Context) error {
-	product, _, err := UserGetById(c)
+	product, err := UserGetById(c)
 	if err != nil {
 		return c.JSON(http.StatusExpectationFailed, "That data not found")
 	}
@@ -86,9 +86,14 @@ func Update(c echo.Context) error {
 
 func Delete(c echo.Context) error {
 
-	_, idx, err := UserGetById(c)
+	_, err := UserGetById(c)
 	if err != nil {
-		c.JSON(http.StatusOK, "not found1")
+		return c.JSON(http.StatusOK, "not found1")
+	}
+
+	idx, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusOK, "Invalid Id")
 	}
 
 	err = repository.Delete(idx)
@@ -107,6 +112,7 @@ func Getall(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusOK, "failed")
 	}
+
 	if IsParameterPresent == 1 {
 		return c.JSON(http.StatusOK, result)
 	}

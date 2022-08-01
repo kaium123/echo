@@ -21,6 +21,4 @@ func NewProductsRouter(e *echo.Echo, productController controller.IProducts) {
 	e.PUT("product/:id", prod.productC.Update)
 	e.DELETE("product/:id", prod.productC.Delete)
 	e.GET("product", prod.productC.Get)
-	//e.GET("product/name", prod.productC.GetProductName)
-	//e.GET("product/search", prod.productC.SearchProductName)
 }

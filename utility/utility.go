@@ -1,10 +1,10 @@
 package utility
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
 	"github.com/kaium123/practice/repository"
 	"github.com/labstack/echo/v4"
@@ -12,7 +12,23 @@ import (
 
 var validate = validator.New()
 
-func Update(product model.Product, req model.Product) model.Product {
+type IProducts interface {
+	UpdateByOldData(product model.Product, req model.Product) model.Product
+	CheckJsonBody(req model.Product) []string
+	GetErrorFeilds(err error) []string
+	Search(c echo.Context) ([]string, *errors.ErrRes)
+}
+
+type products struct {
+	productRepo repository.IProducts
+}
+
+func NewProductsUtility(productRepo repository.IProducts) IProducts {
+	return &products{
+		productRepo: productRepo,
+	}
+}
+func (p *products) UpdateByOldData(product model.Product, req model.Product) model.Product {
 
 	tmp := product
 	product = req
@@ -35,15 +51,13 @@ func Update(product model.Product, req model.Product) model.Product {
 	}
 	return product
 }
-func CheckErrorUpdate(req model.Product) []string {
+func (p *products) CheckJsonBody(req model.Product) []string {
 	var str []string
 	err := validate.Struct(req)
-	fmt.Println(req)
 
 	if err != nil {
-		//i := 0
-		for _, err := range err.(validator.ValidationErrors) {
 
+		for _, err := range err.(validator.ValidationErrors) {
 			if err.Kind() == reflect.String {
 				if err.Value() != "" {
 					tmp := "Invalid "
@@ -67,7 +81,7 @@ func CheckErrorUpdate(req model.Product) []string {
 	return str
 }
 
-func CheckErrors(err error) []string {
+func (p *products) GetErrorFeilds(err error) []string {
 	var str []string
 	for _, err := range err.(validator.ValidationErrors) {
 		s := "Invalid "
@@ -77,62 +91,15 @@ func CheckErrors(err error) []string {
 	return str
 }
 
-func Check(c echo.Context) (int, interface{}, error) {
-	colname := (c.QueryParam("colname"))
-	if c.QueryParam("colname") == "" {
-		return 0, nil, nil
-	}
+func (p *products) Search(c echo.Context) ([]string, *errors.ErrRes) {
 
-	if c.QueryParam("substr") == "" && c.QueryParam("prefix") == "" && c.QueryParam("suffix") == "" {
-		Name, err := repository.QueryColmun(colname)
-		if err != nil {
-			return 1, err, err
-		}
-		return 1, Name, err
-	}
-
-	substr := "%" + c.QueryParam("substr") + "%"
+	colname := "name"
 	query := colname + " LIKE ?" //name="name LIKE ?"
+	prefix := c.QueryParam("search") + "%"
 
-	prefix := c.QueryParam("prefix") + "%"
-	//query := colname + " LIKE ?" //name="name LIKE ?"
-
-	suffix := "%" + c.QueryParam("suffix")
-	//query := colname + " LIKE ?" //name="name LIKE ?"
-
-	presuf := c.QueryParam("prefix") + "%" + c.QueryParam("suffix")
-
-	if c.QueryParam("substr") != "" {
-		Name, err := repository.SubStringSearch(query, colname, substr)
-		if err != nil {
-			return 1, err, err
-		}
-		return 1, Name, nil
+	Name, err := p.productRepo.Search(query, prefix)
+	if err != nil {
+		return Name, err
 	}
-
-	if c.QueryParam("prefix") != "" && c.QueryParam("suffix") != "" {
-		Name, err := repository.PreSUfSearch(query, colname, presuf)
-		if err != nil {
-			return 1, err, err
-		}
-		return 1, Name, nil
-	}
-
-	if c.QueryParam("prefix") != "" {
-		Name, err := repository.SuffixStringSearch(query, colname, prefix)
-		if err != nil {
-			return 1, err, err
-		}
-		return 1, Name, nil
-	}
-
-	if c.QueryParam("suffix") != "" {
-		Name, err := repository.PrefixStringSearch(query, colname, suffix)
-		if err != nil {
-			return 1, err, err
-		}
-		return 1, Name, nil
-	}
-
-	return 1, nil, nil
+	return Name, nil
 }

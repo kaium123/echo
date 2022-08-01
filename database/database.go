@@ -3,33 +3,40 @@ package database
 import (
 	"fmt"
 
-	"github.com/jinzhu/gorm"
+	//"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/kaium123/practice/config"
 	"github.com/kaium123/practice/model"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 var db *gorm.DB
 
-func InitDB() {
-	var err error
-	dataSourceName := "root:@tcp(localhost:3306)/?parseTime=True"
-	db, err = gorm.Open("mysql", dataSourceName)
+func InitDB() *gorm.DB {
+	dbConfig := config.Db()
+
+	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", dbConfig.User, dbConfig.Pass, dbConfig.Host, dbConfig.Port, dbConfig.Schema)
+
+	database, err := gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
 
 	if err != nil {
 		fmt.Println(err)
 		panic("failed to connect database")
 	}
 
-	db.Exec("CREATE DATABASE IF NOT EXISTS company")
-	db.Exec("USE company")
+	database.Exec("USE company")
 
 	fmt.Println("created")
 
-	db.AutoMigrate(&model.Product{})
-
+	database.AutoMigrate(&model.Product{})
+	db = database
+	return db
 }
 
 func GetDB() *gorm.DB {
-	InitDB()
+	if db == nil {
+		InitDB()
+	}
 	return db
 }

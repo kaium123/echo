@@ -1,70 +1,109 @@
 package repository
 
 import (
-	"github.com/kaium123/practice/database"
+	"fmt"
+
+	"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
+	"gorm.io/gorm"
 )
 
-var db = database.GetDB()
-
-func Insert(req *model.Product) error {
-
-	err := db.Create(&req).Error
-	return err
+type IProducts interface {
+	Insert(req *model.Product) *errors.ErrRes
+	SearchById(idx int) (model.Product, *errors.ErrRes)
+	Update(product model.Product) *errors.ErrRes
+	Delete(idx int) *errors.ErrRes
+	SearchAll() ([]model.Product, *errors.ErrRes)
+	Search(query string, prefix string) ([]string, *errors.ErrRes)
 }
 
-func SearchById(idx int) (model.Product, error) {
-
-	var tmp model.Product
-	err := db.First(&tmp, idx).Error
-	return tmp, err
+type products struct {
+	db *gorm.DB
 }
 
-func Update(product model.Product) error {
-
-	err := db.Save(&product).Error
-	return err
+func NewProductsRepository(DB *gorm.DB) IProducts {
+	return &products{
+		db: DB,
+	}
 }
 
-func Delete(idx int) error {
+func (p *products) Insert(req *model.Product) *errors.ErrRes {
 
-	err := db.Where("id = ?", idx).Delete(&model.Product{}).Error
-	return err
+	err := p.db.Create(&req).Error
+	if err != nil {
+		return errors.ErrInternalServerErr("Data didn't insert, something went wrong")
+	}
+
+	return nil
 }
 
-func SearchAll() ([]model.Product, error) {
+func (p *products) SearchById(idx int) (model.Product, *errors.ErrRes) {
 
-	var product []model.Product
-	err := db.Find(&product).Error
-	return product, err
+	var product model.Product
+	err := p.db.First(&product, idx)
+	if err.RowsAffected == 0 {
+		return product, errors.ErrNotFound("Content not found")
+	}
+
+	if err.Error != nil {
+		return product, errors.ErrInternalServerErr("Something went wrong")
+	}
+
+	return product, nil
 }
 
-func QueryColmun(colname string) (interface{}, error) {
+func (p *products) Update(product model.Product) *errors.ErrRes {
+
+	err := p.db.Save(&product)
+	if err.Error != nil {
+		return errors.ErrInternalServerErr("Something went wrong")
+	}
+
+	return nil
+}
+
+func (p *products) Delete(idx int) *errors.ErrRes {
+
+	err := p.db.Where("id = ?", idx).Delete(&model.Product{})
+	if err != nil {
+		return errors.ErrInternalServerErr("Something went wrong")
+	}
+
+	return nil
+}
+
+func (p *products) SearchAll() ([]model.Product, *errors.ErrRes) {
+
+	var products []model.Product
+	err := p.db.Find(&products)
+	fmt.Println(products)
+
+	fmt.Println(err.RowsAffected)
+	if err.RowsAffected == 0 {
+		errRes := errors.ErrNotFound("Data Not Found")
+		return products, errRes
+	}
+
+	if err.Error != nil {
+		errRes := errors.ErrInternalServerErr("Something went wrong")
+		return products, errRes
+	}
+
+	return products, nil
+}
+
+func (p *products) Search(query string, prefix string) ([]string, *errors.ErrRes) {
 	var Name []string
-	err := db.Model(&model.Product{}).Pluck(colname, &Name).Error
-	return Name, err
-}
+	err := p.db.Model(&model.Product{}).Where(query, prefix).Pluck("name", &Name)
+	if err.RowsAffected == 0 {
+		errRes := errors.ErrNotFound("Not Found")
+		return Name, errRes
+	}
 
-func SubStringSearch(query string, colname string, substr string) (interface{}, error) {
-	var Name []string
-	err := db.Model(&model.Product{}).Where(query, substr).Pluck(colname, &Name).Error
-	return Name, err
-}
+	if err.Error != nil {
+		errRes := errors.ErrInternalServerErr("Something went wrong")
+		return Name, errRes
+	}
 
-func PreSUfSearch(query string, colname string, presuf string) (interface{}, error) {
-	var Name []string
-	err := db.Model(&model.Product{}).Where(query, presuf).Pluck(colname, &Name).Error
-	return Name, err
-}
-
-func SuffixStringSearch(query string, colname string, suffix string) (interface{}, error) {
-	var Name []string
-	err := db.Model(&model.Product{}).Where(query, suffix).Pluck(colname, &Name).Error
-	return Name, err
-}
-
-func PrefixStringSearch(query string, colname string, prefix string) (interface{}, error) {
-	var Name []string
-	err := db.Model(&model.Product{}).Where(query, prefix).Pluck(colname, &Name).Error
-	return Name, err
+	return Name, nil
 }

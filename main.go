@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/kaium123/practice/router"
+	"github.com/kaium123/practice/cmd"
 )
 
 func main() {
-	router.Route()
+
+	cmd.Execute()
 }

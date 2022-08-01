@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
 	"github.com/kaium123/practice/repository"
 	"github.com/kaium123/practice/utility"
@@ -14,112 +15,134 @@ import (
 
 var validate = validator.New()
 
-func Get(c echo.Context) error {
-	product, err := UserGetById(c)
-	if err != nil {
-		return c.JSON(http.StatusOK, "That product not found")
-	}
-
-	return c.JSON(http.StatusOK, product)
+type IProducts interface {
+	GetProduct(c echo.Context) error
+	Post(c echo.Context) error
+	Update(c echo.Context) error
+	Delete(c echo.Context) error
+	Get(c echo.Context) error
 }
 
-func Post(c echo.Context) error {
-	var req = new(model.Product)
+type products struct {
+	productRepo    repository.IProducts
+	productUtility utility.IProducts
+}
 
+func NewProductsController(productRepo repository.IProducts, productUtility utility.IProducts) IProducts {
+	return &products{
+		productRepo:    productRepo,
+		productUtility: productUtility,
+	}
+}
+func (p *products) GetProduct(c echo.Context) error {
+	product, err := p.ProductGetById(c)
+	if err != nil {
+		return c.JSON(err.Status, err)
+	}
+
+	return c.JSON(http.StatusFound, product)
+}
+
+func (p *products) Post(c echo.Context) error {
+
+	var req = new(model.Product)
 	if err := c.Bind(req); err != nil {
-		return c.JSON(http.StatusExpectationFailed, "There is an error")
+		errRes := errors.ErrBadRequest("Invalid json body")
+		return c.JSON(errRes.Status, errRes)
 	}
 
 	if err := validate.Struct(req); err != nil {
-		err := utility.CheckErrors(err)
+		err := p.productUtility.GetErrorFeilds(err)
 		return c.JSON(http.StatusExpectationFailed, err)
 	}
 
-	err := repository.Insert(req)
+	err := p.productRepo.Insert(req)
 	if err != nil {
-		return c.JSON(http.StatusOK, "Opps data didn't insert")
+		return c.JSON(err.Status, err)
 	}
 
-	return c.JSON(http.StatusOK, req)
+	return c.JSON(http.StatusCreated, req)
 }
 
-func UserGetById(c echo.Context) (model.Product, error) {
+func (p *products) ProductGetById(c echo.Context) (model.Product, *errors.ErrRes) {
 
-	var tmp model.Product
+	var product model.Product
 	idx, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return tmp, err
+		errRes := errors.ErrBadRequest(err.Error())
+		return product, &errRes
 	}
 
-	tmp, err = repository.SearchById(idx)
-	if err != nil {
-		return tmp, err
+	product, errRes := p.productRepo.SearchById(idx)
+	if errRes != nil {
+		return product, errRes
 	}
 
-	return tmp, nil
+	return product, nil
 }
 
-func Update(c echo.Context) error {
-	product, err := UserGetById(c)
+func (p *products) Update(c echo.Context) error {
+	product, err := p.ProductGetById(c)
 	if err != nil {
-		return c.JSON(http.StatusExpectationFailed, "That data not found")
+		return c.JSON(err.Status, err)
 	}
 
 	var req model.Product
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusExpectationFailed, "failed to Bind data")
+		errRes := errors.ErrBadRequest("Invalid json body")
+		return c.JSON(errRes.Status, errRes)
 	}
 
-	str := utility.CheckErrorUpdate(req)
-	if len(str) > 0 {
-		return c.JSON(http.StatusExpectationFailed, str)
+	errFields := p.productUtility.CheckJsonBody(req)
+	if len(errFields) > 0 {
+		return c.JSON(http.StatusExpectationFailed, errFields)
 	}
 
-	product = utility.Update(product, req)
-	err = repository.Update(product)
-	if err != nil {
-		return c.JSON(http.StatusExpectationFailed, "failed")
+	product = p.productUtility.UpdateByOldData(product, req)
+	Err := p.productRepo.Update(product)
+	if Err != nil {
+		return c.JSON(Err.Status, Err)
 	}
 
 	return c.JSON(http.StatusOK, product)
 }
 
-func Delete(c echo.Context) error {
+func (p *products) Delete(c echo.Context) error {
 
-	_, err := UserGetById(c)
-	if err != nil {
-		return c.JSON(http.StatusOK, "not found1")
+	_, errRes := p.ProductGetById(c)
+	if errRes != nil {
+		return c.JSON(errRes.Status, errRes)
 	}
-
 	idx, err := strconv.Atoi(c.Param("id"))
+	//idx, err = strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.JSON(http.StatusOK, "Invalid Id")
+		return c.JSON(http.StatusUnprocessableEntity, "Invalid Id")
 	}
 
-	err = repository.Delete(idx)
+	errRes = p.productRepo.Delete(idx)
 	if err != nil {
-		return c.JSON(http.StatusOK, "failed")
+		return c.JSON(errRes.Status, errRes)
 	}
 
 	return c.JSON(http.StatusOK, " successfully deleted")
 }
 
-func Getall(c echo.Context) error {
-	var product []model.Product
-	//fmt.Println(c.QueryParam("colname"))
-	IsParameterPresent, result, err := utility.Check(c)
-	fmt.Println(result, IsParameterPresent)
-	if err != nil {
-		return c.JSON(http.StatusOK, "failed")
+func (p *products) Get(c echo.Context) error {
+	var products []model.Product
+	if c.QueryParam("search") != "" {
+		Name, err := p.productUtility.Search(c)
+
+		if err != nil {
+			return c.JSON(err.Status, err)
+		}
+		return c.JSON(http.StatusOK, Name)
 	}
 
-	if IsParameterPresent == 1 {
-		return c.JSON(http.StatusOK, result)
-	}
-	product, err = repository.SearchAll()
-	if err != nil {
-		return c.JSON(http.StatusOK, "failed")
+	products, errRes := p.productRepo.SearchAll()
+	fmt.Println(errRes)
+	if errRes != nil {
+		return c.JSON(errRes.Status, errRes)
 	}
 
-	return c.JSON(http.StatusOK, product)
+	return c.JSON(http.StatusOK, products)
 }

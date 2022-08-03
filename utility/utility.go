@@ -10,22 +10,22 @@ import (
 
 var validate = validator.New()
 
-type IProductsRepo interface {
+type IProductsUtility interface {
 	UpdateByOldData(product model.Product, req model.Product) model.Product
 	CheckJsonBody(req model.Product) []string
 	GetErrorFeilds(err error) []string
 }
 
-type ProductsRepo struct {
+type ProductsUtility struct {
 	productRepo repository.IProductsRepo
 }
 
-func NewProductsUtility(productRepo repository.IProductsRepo) IProductsRepo {
-	return &ProductsRepo{
+func NewProductsUtility(productRepo repository.IProductsRepo) IProductsUtility {
+	return &ProductsUtility{
 		productRepo: productRepo,
 	}
 }
-func (p *ProductsRepo) UpdateByOldData(product model.Product, req model.Product) model.Product {
+func (p *ProductsUtility) UpdateByOldData(product model.Product, req model.Product) model.Product {
 
 	tmp := product
 	product = req
@@ -48,7 +48,7 @@ func (p *ProductsRepo) UpdateByOldData(product model.Product, req model.Product)
 	}
 	return product
 }
-func (p *ProductsRepo) CheckJsonBody(req model.Product) []string {
+func (p *ProductsUtility) CheckJsonBody(req model.Product) []string {
 	var str []string
 	err := validate.Struct(req)
 
@@ -78,7 +78,7 @@ func (p *ProductsRepo) CheckJsonBody(req model.Product) []string {
 	return str
 }
 
-func (p *ProductsRepo) GetErrorFeilds(err error) []string {
+func (p *ProductsUtility) GetErrorFeilds(err error) []string {
 	var str []string
 	for _, err := range err.(validator.ValidationErrors) {
 		s := "Invalid "

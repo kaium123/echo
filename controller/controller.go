@@ -14,12 +14,20 @@ import (
 
 var validate = validator.New()
 
-type ProductsController struct {
-	productRepo    repository.IProductsRepo
-	productUtility utility.IProductsRepo
+type IProductsController interface {
+	GetProduct(c echo.Context) error
+	Create(c echo.Context) error
+	Update(c echo.Context) error
+	Delete(c echo.Context) error
+	GetProducts(c echo.Context) error
 }
 
-func NewProductsController(productRepo repository.IProductsRepo, productUtility utility.IProductsRepo) *ProductsController {
+type ProductsController struct {
+	productRepo    repository.IProductsRepo
+	productUtility utility.IProductsUtility
+}
+
+func NewProductsController(productRepo repository.IProductsRepo, productUtility utility.IProductsUtility) IProductsController {
 	return &ProductsController{
 		productRepo:    productRepo,
 		productUtility: productUtility,
@@ -76,7 +84,9 @@ func (p *ProductsController) GetProduct(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, "Invalid Id")
 	}
+
 	product, errRes := p.ProductGetById(idx)
+
 	if product == (model.Product{}) {
 		return c.JSON(http.StatusNotFound, "Data not found")
 	}
@@ -109,6 +119,7 @@ func (p *ProductsController) GetProducts(c echo.Context) error {
 func (p *ProductsController) ProductGetById(idx int) (model.Product, *errors.ErrRes) {
 
 	product, err := p.productRepo.SearchById(idx)
+
 	if err != nil {
 		errRes := errors.ErrInternalServerErr("Something went wrong")
 		return product, errRes

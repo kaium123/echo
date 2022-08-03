@@ -3,6 +3,7 @@ package repository
 import (
 
 	//"github.com/kaium123/practice/errors"
+
 	"github.com/kaium123/practice/model"
 	"gorm.io/gorm"
 )
@@ -78,6 +79,7 @@ func (p *ProductsRepo) SearchAll(prefix string) ([]model.Product, error) {
 func (p *ProductsRepo) SearchById(idx int) (model.Product, error) {
 
 	var product model.Product
+
 	err := p.db.First(&product, idx)
 
 	if err.RowsAffected == 0 {

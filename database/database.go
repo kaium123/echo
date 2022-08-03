@@ -35,8 +35,5 @@ func InitDB() *gorm.DB {
 }
 
 func GetDB() *gorm.DB {
-	if db == nil {
-		InitDB()
-	}
 	return db
 }

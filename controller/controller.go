@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -15,35 +14,19 @@ import (
 
 var validate = validator.New()
 
-type IProducts interface {
-	GetProduct(c echo.Context) error
-	Post(c echo.Context) error
-	Update(c echo.Context) error
-	Delete(c echo.Context) error
-	Get(c echo.Context) error
+type ProductsController struct {
+	productRepo    repository.IProductsRepo
+	productUtility utility.IProductsRepo
 }
 
-type products struct {
-	productRepo    repository.IProducts
-	productUtility utility.IProducts
-}
-
-func NewProductsController(productRepo repository.IProducts, productUtility utility.IProducts) IProducts {
-	return &products{
+func NewProductsController(productRepo repository.IProductsRepo, productUtility utility.IProductsRepo) *ProductsController {
+	return &ProductsController{
 		productRepo:    productRepo,
 		productUtility: productUtility,
 	}
 }
-func (p *products) GetProduct(c echo.Context) error {
-	product, err := p.ProductGetById(c)
-	if err != nil {
-		return c.JSON(err.Status, err)
-	}
 
-	return c.JSON(http.StatusFound, product)
-}
-
-func (p *products) Post(c echo.Context) error {
+func (p *ProductsController) Create(c echo.Context) error {
 
 	var req = new(model.Product)
 	if err := c.Bind(req); err != nil {
@@ -58,35 +41,83 @@ func (p *products) Post(c echo.Context) error {
 
 	err := p.productRepo.Insert(req)
 	if err != nil {
-		return c.JSON(err.Status, err)
+		errRes := errors.ErrInternalServerErr("Data didn't create, something went wrong")
+		return c.JSON(errRes.Status, errRes)
 	}
 
 	return c.JSON(http.StatusCreated, req)
 }
 
-func (p *products) ProductGetById(c echo.Context) (model.Product, *errors.ErrRes) {
+func (p *ProductsController) Delete(c echo.Context) error {
 
-	var product model.Product
 	idx, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		errRes := errors.ErrBadRequest(err.Error())
-		return product, &errRes
+		return c.JSON(http.StatusUnprocessableEntity, "Invalid Id")
 	}
 
-	product, errRes := p.productRepo.SearchById(idx)
+	product, errRes := p.ProductGetById(idx)
+	if product == (model.Product{}) {
+		return c.JSON(http.StatusNotFound, "That product dont exist")
+	}
 	if errRes != nil {
+		return c.JSON(errRes.Status, errRes)
+	}
+
+	if err = p.productRepo.Delete(idx); err != nil {
+		errRes := errors.ErrInternalServerErr("Data didn't deleted")
+		return c.JSON(errRes.Status, errRes)
+	}
+
+	return c.JSON(http.StatusOK, "Data successfully deleted")
+}
+
+func (p *ProductsController) GetProduct(c echo.Context) error {
+	idx, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, "Invalid Id")
+	}
+	product, errRes := p.ProductGetById(idx)
+	if product == (model.Product{}) {
+		return c.JSON(http.StatusNotFound, "Data not found")
+	}
+
+	if errRes != nil {
+		return c.JSON(errRes.Status, errRes)
+	}
+
+	return c.JSON(http.StatusFound, product)
+}
+
+func (p *ProductsController) GetProducts(c echo.Context) error {
+	var products []model.Product
+	prefix := c.QueryParam("search")
+
+	products, err := p.productRepo.SearchAll(prefix)
+
+	if len(products) == 0 {
+		return c.JSON(http.StatusNotFound, "Data Not Found")
+	}
+
+	if err != nil {
+		errRes := errors.ErrInternalServerErr("Something went wrong")
+		return c.JSON(errRes.Status, errRes)
+	}
+
+	return c.JSON(http.StatusOK, products)
+}
+
+func (p *ProductsController) ProductGetById(idx int) (model.Product, *errors.ErrRes) {
+
+	product, err := p.productRepo.SearchById(idx)
+	if err != nil {
+		errRes := errors.ErrInternalServerErr("Something went wrong")
 		return product, errRes
 	}
 
 	return product, nil
 }
 
-func (p *products) Update(c echo.Context) error {
-	product, err := p.ProductGetById(c)
-	if err != nil {
-		return c.JSON(err.Status, err)
-	}
-
+func (p *ProductsController) Update(c echo.Context) error {
 	var req model.Product
 	if err := c.Bind(&req); err != nil {
 		errRes := errors.ErrBadRequest("Invalid json body")
@@ -98,51 +129,26 @@ func (p *products) Update(c echo.Context) error {
 		return c.JSON(http.StatusExpectationFailed, errFields)
 	}
 
-	product = p.productUtility.UpdateByOldData(product, req)
-	Err := p.productRepo.Update(product)
-	if Err != nil {
-		return c.JSON(Err.Status, Err)
-	}
-
-	return c.JSON(http.StatusOK, product)
-}
-
-func (p *products) Delete(c echo.Context) error {
-
-	_, errRes := p.ProductGetById(c)
-	if errRes != nil {
-		return c.JSON(errRes.Status, errRes)
-	}
 	idx, err := strconv.Atoi(c.Param("id"))
-	//idx, err = strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, "Invalid Id")
 	}
 
-	errRes = p.productRepo.Delete(idx)
-	if err != nil {
-		return c.JSON(errRes.Status, errRes)
+	product, errRes := p.ProductGetById(idx)
+	if product == (model.Product{}) {
+		return c.JSON(http.StatusNotFound, "That data dont exist")
 	}
 
-	return c.JSON(http.StatusOK, " successfully deleted")
-}
-
-func (p *products) Get(c echo.Context) error {
-	var products []model.Product
-	if c.QueryParam("search") != "" {
-		Name, err := p.productUtility.Search(c)
-
-		if err != nil {
-			return c.JSON(err.Status, err)
-		}
-		return c.JSON(http.StatusOK, Name)
-	}
-
-	products, errRes := p.productRepo.SearchAll()
-	fmt.Println(errRes)
 	if errRes != nil {
 		return c.JSON(errRes.Status, errRes)
 	}
 
-	return c.JSON(http.StatusOK, products)
+	product = p.productUtility.UpdateByOldData(product, req)
+
+	if err = p.productRepo.Update(product); err != nil {
+		errRes := errors.ErrInternalServerErr("Data didn't Update, some thing went wrong")
+		return c.JSON(errRes.Status, errRes)
+	}
+
+	return c.JSON(http.StatusOK, product)
 }

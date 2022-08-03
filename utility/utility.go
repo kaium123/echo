@@ -4,31 +4,28 @@ import (
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
 	"github.com/kaium123/practice/repository"
-	"github.com/labstack/echo/v4"
 )
 
 var validate = validator.New()
 
-type IProducts interface {
+type IProductsRepo interface {
 	UpdateByOldData(product model.Product, req model.Product) model.Product
 	CheckJsonBody(req model.Product) []string
 	GetErrorFeilds(err error) []string
-	Search(c echo.Context) ([]string, *errors.ErrRes)
 }
 
-type products struct {
-	productRepo repository.IProducts
+type ProductsRepo struct {
+	productRepo repository.IProductsRepo
 }
 
-func NewProductsUtility(productRepo repository.IProducts) IProducts {
-	return &products{
+func NewProductsUtility(productRepo repository.IProductsRepo) IProductsRepo {
+	return &ProductsRepo{
 		productRepo: productRepo,
 	}
 }
-func (p *products) UpdateByOldData(product model.Product, req model.Product) model.Product {
+func (p *ProductsRepo) UpdateByOldData(product model.Product, req model.Product) model.Product {
 
 	tmp := product
 	product = req
@@ -51,7 +48,7 @@ func (p *products) UpdateByOldData(product model.Product, req model.Product) mod
 	}
 	return product
 }
-func (p *products) CheckJsonBody(req model.Product) []string {
+func (p *ProductsRepo) CheckJsonBody(req model.Product) []string {
 	var str []string
 	err := validate.Struct(req)
 
@@ -81,7 +78,7 @@ func (p *products) CheckJsonBody(req model.Product) []string {
 	return str
 }
 
-func (p *products) GetErrorFeilds(err error) []string {
+func (p *ProductsRepo) GetErrorFeilds(err error) []string {
 	var str []string
 	for _, err := range err.(validator.ValidationErrors) {
 		s := "Invalid "
@@ -89,17 +86,4 @@ func (p *products) GetErrorFeilds(err error) []string {
 		str = append(str, s)
 	}
 	return str
-}
-
-func (p *products) Search(c echo.Context) ([]string, *errors.ErrRes) {
-
-	colname := "name"
-	query := colname + " LIKE ?" //name="name LIKE ?"
-	prefix := c.QueryParam("search") + "%"
-
-	Name, err := p.productRepo.Search(query, prefix)
-	if err != nil {
-		return Name, err
-	}
-	return Name, nil
 }

@@ -1,109 +1,101 @@
 package repository
 
 import (
-	"fmt"
 
-	"github.com/kaium123/practice/errors"
+	//"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
 	"gorm.io/gorm"
 )
 
-type IProducts interface {
-	Insert(req *model.Product) *errors.ErrRes
-	SearchById(idx int) (model.Product, *errors.ErrRes)
-	Update(product model.Product) *errors.ErrRes
-	Delete(idx int) *errors.ErrRes
-	SearchAll() ([]model.Product, *errors.ErrRes)
-	Search(query string, prefix string) ([]string, *errors.ErrRes)
+type IProductsRepo interface {
+	Delete(idx int) error
+	Insert(req *model.Product) error
+	Search(prefix string) ([]model.Product, error)
+	SearchAll(prefix string) ([]model.Product, error)
+	SearchById(idx int) (model.Product, error)
+	Update(product model.Product) error
 }
 
-type products struct {
+type ProductsRepo struct {
 	db *gorm.DB
 }
 
-func NewProductsRepository(DB *gorm.DB) IProducts {
-	return &products{
+func NewProductsRepository(DB *gorm.DB) IProductsRepo {
+	return &ProductsRepo{
 		db: DB,
 	}
 }
 
-func (p *products) Insert(req *model.Product) *errors.ErrRes {
+func (p *ProductsRepo) Delete(idx int) error {
 
-	err := p.db.Create(&req).Error
-	if err != nil {
-		return errors.ErrInternalServerErr("Data didn't insert, something went wrong")
+	if err := p.db.Where("id = ?", idx).Delete(&model.Product{}); err != nil {
+		return err.Error
 	}
 
 	return nil
 }
 
-func (p *products) SearchById(idx int) (model.Product, *errors.ErrRes) {
+func (p *ProductsRepo) Insert(req *model.Product) error {
 
-	var product model.Product
-	err := p.db.First(&product, idx)
-	if err.RowsAffected == 0 {
-		return product, errors.ErrNotFound("Content not found")
-	}
-
-	if err.Error != nil {
-		return product, errors.ErrInternalServerErr("Something went wrong")
-	}
-
-	return product, nil
-}
-
-func (p *products) Update(product model.Product) *errors.ErrRes {
-
-	err := p.db.Save(&product)
-	if err.Error != nil {
-		return errors.ErrInternalServerErr("Something went wrong")
+	if err := p.db.Create(&req).Error; err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (p *products) Delete(idx int) *errors.ErrRes {
-
-	err := p.db.Where("id = ?", idx).Delete(&model.Product{})
-	if err != nil {
-		return errors.ErrInternalServerErr("Something went wrong")
-	}
-
-	return nil
-}
-
-func (p *products) SearchAll() ([]model.Product, *errors.ErrRes) {
-
+func (p *ProductsRepo) Search(prefix string) ([]model.Product, error) {
 	var products []model.Product
-	err := p.db.Find(&products)
-	fmt.Println(products)
+	prefix += "%"
+	err := p.db.Where("name LIKE ?", prefix).Find(&products)
 
-	fmt.Println(err.RowsAffected)
 	if err.RowsAffected == 0 {
-		errRes := errors.ErrNotFound("Data Not Found")
-		return products, errRes
+		return products, err.Error
 	}
 
 	if err.Error != nil {
-		errRes := errors.ErrInternalServerErr("Something went wrong")
-		return products, errRes
+		return products, err.Error
 	}
 
 	return products, nil
 }
 
-func (p *products) Search(query string, prefix string) ([]string, *errors.ErrRes) {
-	var Name []string
-	err := p.db.Model(&model.Product{}).Where(query, prefix).Pluck("name", &Name)
+func (p *ProductsRepo) SearchAll(prefix string) ([]model.Product, error) {
+
+	var products []model.Product
+	if prefix != "" {
+		return p.Search(prefix)
+	}
+
+	err := p.db.Find(&products)
+	if err != nil {
+		return products, err.Error
+	}
+
+	return products, nil
+}
+
+func (p *ProductsRepo) SearchById(idx int) (model.Product, error) {
+
+	var product model.Product
+	err := p.db.First(&product, idx)
+
 	if err.RowsAffected == 0 {
-		errRes := errors.ErrNotFound("Not Found")
-		return Name, errRes
+		return product, nil
 	}
 
 	if err.Error != nil {
-		errRes := errors.ErrInternalServerErr("Something went wrong")
-		return Name, errRes
+		return product, err.Error
 	}
 
-	return Name, nil
+	return product, nil
+}
+
+func (p *ProductsRepo) Update(product model.Product) error {
+
+	if err := p.db.Save(&product); err != nil {
+		return err.Error
+	}
+
+	return nil
 }

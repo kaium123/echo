@@ -8,6 +8,7 @@ import (
 func Auth(c *echo.Echo) echo.MiddlewareFunc {
 	f := middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == "jack" && password == "123" {
+
 			return true, nil
 		}
 

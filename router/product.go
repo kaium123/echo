@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func NewProductsRouter(e *echo.Echo, productController controller.IProductsController) {
+func NewProductsRouter(e *echo.Echo, productController *controller.ProductsController) {
 
 	e.POST("/products", productController.Create, middleware.Auth(e))
 	e.PUT("/products/:id", productController.Update, middleware.Auth(e))

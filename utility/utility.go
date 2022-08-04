@@ -1,89 +1,43 @@
 package utility
 
-import (
-	"reflect"
+// var validate = validator.New()
 
-	"github.com/go-playground/validator/v10"
-	"github.com/kaium123/practice/model"
-	"github.com/kaium123/practice/repository"
-)
+// func CheckJsonBody(req model.Product) []string {
+// 	var str []string
+// 	err := validate.Struct(req)
 
-var validate = validator.New()
+// 	if err != nil {
 
-type IProductsUtility interface {
-	UpdateByOldData(product model.Product, req model.Product) model.Product
-	CheckJsonBody(req model.Product) []string
-	GetErrorFeilds(err error) []string
-}
+// 		for _, err := range err.(validator.ValidationErrors) {
+// 			if err.Kind() == reflect.String {
+// 				if err.Value() != "" {
+// 					tmp := "Invalid "
+// 					tmp += err.StructField()
+// 					str = append(str, tmp)
+// 				}
+// 			}
 
-type ProductsUtility struct {
-	productRepo repository.IProductsRepo
-}
+// 			if err.Kind() == reflect.Int32 {
+// 				val := err.Value()
+// 				var zero int32 = 0
+// 				if val != zero {
+// 					tmp := "Invalid "
+// 					tmp += err.StructField()
+// 					str = append(str, tmp)
+// 				}
+// 			}
+// 		}
+// 	}
 
-func NewProductsUtility(productRepo repository.IProductsRepo) IProductsUtility {
-	return &ProductsUtility{
-		productRepo: productRepo,
-	}
-}
-func (p *ProductsUtility) UpdateByOldData(product model.Product, req model.Product) model.Product {
+// 	return str
+// }
 
-	tmp := product
-	product = req
-	product.ID = tmp.ID
-
-	if product.Name == "" {
-		product.Name = tmp.Name
-	}
-
-	if product.Key == 0 {
-		product.Key = tmp.Key
-	}
-
-	if product.Price == 0 {
-		product.Price = tmp.Price
-	}
-
-	if product.Details == "" {
-		product.Details = tmp.Details
-	}
-	return product
-}
-func (p *ProductsUtility) CheckJsonBody(req model.Product) []string {
-	var str []string
-	err := validate.Struct(req)
-
-	if err != nil {
-
-		for _, err := range err.(validator.ValidationErrors) {
-			if err.Kind() == reflect.String {
-				if err.Value() != "" {
-					tmp := "Invalid "
-					tmp += err.StructField()
-					str = append(str, tmp)
-				}
-			}
-
-			if err.Kind() == reflect.Int32 {
-				val := err.Value()
-				var zero int32 = 0
-				if val != zero {
-					tmp := "Invalid "
-					tmp += err.StructField()
-					str = append(str, tmp)
-				}
-			}
-		}
-	}
-
-	return str
-}
-
-func (p *ProductsUtility) GetErrorFeilds(err error) []string {
-	var str []string
-	for _, err := range err.(validator.ValidationErrors) {
-		s := "Invalid "
-		s += err.StructField()
-		str = append(str, s)
-	}
-	return str
-}
+// func GetErrorFeilds(err error) []string {
+// 	var str []string
+// 	for _, err := range err.(validator.ValidationErrors) {
+// 		s := "Invalid "
+// 		s += err.StructField()
+// 		str = append(str, s)
+// 	}
+// 	return str
+// }

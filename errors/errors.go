@@ -1,6 +1,13 @@
 package errors
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
+
+var (
+	ErrDataNotFound = errors.New("Data Not Found")
+)
 
 type ErrRes struct {
 	Message string `json:"message"`
@@ -31,4 +38,12 @@ func ErrNotFound(msg string) *ErrRes {
 		Status:  http.StatusNotFound,
 		Error:   "Content not found",
 	}
+}
+
+func CheckErr(err error, msg string) *ErrRes {
+	if err == ErrDataNotFound {
+		return ErrNotFound(msg + " Not Found")
+	}
+
+	return ErrInternalServerErr("Some thing went wrong")
 }

@@ -49,7 +49,7 @@ func (p *ProductsRepo) Search(prefix string) ([]model.Product, error) {
 	queryExc := p.db.Where("name LIKE ?", prefix).Find(&products)
 
 	if queryExc.RowsAffected == 0 {
-		return nil, errors.ErrDataNotFound
+		return nil, nil
 	}
 
 	if queryExc.Error != nil {
@@ -68,7 +68,7 @@ func (p *ProductsRepo) SearchAll(prefix string) ([]model.Product, error) {
 
 	queryExc := p.db.Find(&products)
 	if queryExc.RowsAffected == 0 {
-		return nil, errors.ErrDataNotFound
+		return nil, nil
 	}
 
 	if queryExc.Error != nil {

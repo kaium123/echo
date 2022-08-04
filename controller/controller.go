@@ -84,7 +84,6 @@ func (p *ProductsController) GetProduct(c echo.Context) error {
 	}
 
 	product, err = p.ProductGetById(idx)
-
 	if product == nil {
 		return c.JSON(http.StatusNotFound, "Product not found")
 	}

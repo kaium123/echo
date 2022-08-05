@@ -16,3 +16,7 @@ func Auth(c *echo.Echo) echo.MiddlewareFunc {
 	})
 	return f
 }
+func Attach(e *echo.Echo) error {
+	e.Pre(middleware.RemoveTrailingSlash())
+	return nil
+}

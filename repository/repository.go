@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/kaium123/practice/errors"
 	"github.com/kaium123/practice/model"
 	"gorm.io/gorm"
@@ -9,9 +11,9 @@ import (
 type IProductsRepo interface {
 	Delete(idx int) error
 	Insert(req *model.Product) error
-	Search(prefix string) ([]model.Product, error)
-	SearchAll(prefix string) ([]model.Product, error)
-	SearchById(idx int) (*model.Product, error)
+	SearchAll(keyword string) ([]model.Product, error)
+	FindById(idx int) (*model.Product, error)
+	SearchByName(Name string) error
 	Update(product *model.Product) error
 }
 
@@ -43,10 +45,10 @@ func (p *ProductsRepo) Insert(req *model.Product) error {
 	return nil
 }
 
-func (p *ProductsRepo) Search(prefix string) ([]model.Product, error) {
+func (p *ProductsRepo) SearchByKeword(keyword string) ([]model.Product, error) {
 	var products []model.Product
-	prefix = "%" + prefix + "%"
-	queryExc := p.db.Where("name LIKE ?", prefix).Find(&products)
+	keyword = "%" + keyword + "%"
+	queryExc := p.db.Where("name LIKE ?", keyword).Find(&products)
 
 	if queryExc.RowsAffected == 0 {
 		return nil, nil
@@ -59,11 +61,28 @@ func (p *ProductsRepo) Search(prefix string) ([]model.Product, error) {
 	return products, nil
 }
 
-func (p *ProductsRepo) SearchAll(prefix string) ([]model.Product, error) {
+func (p *ProductsRepo) SearchByName(Name string) error {
+	var products []model.Product
+	queryExc := p.db.Where("name LIKE ?", Name).Find(&products)
+	fmt.Println(Name)
+	fmt.Println(products)
+
+	if queryExc.RowsAffected != 0 {
+		return errors.ErrExist
+	}
+
+	if queryExc.Error != nil {
+		return queryExc.Error
+	}
+
+	return nil
+}
+
+func (p *ProductsRepo) SearchAll(keyword string) ([]model.Product, error) {
 
 	var products []model.Product
-	if prefix != "" {
-		return p.Search(prefix)
+	if keyword != "" {
+		return p.SearchByKeword(keyword)
 	}
 
 	queryExc := p.db.Find(&products)
@@ -78,7 +97,7 @@ func (p *ProductsRepo) SearchAll(prefix string) ([]model.Product, error) {
 	return products, nil
 }
 
-func (p *ProductsRepo) SearchById(idx int) (*model.Product, error) {
+func (p *ProductsRepo) FindById(idx int) (*model.Product, error) {
 
 	var product *model.Product
 

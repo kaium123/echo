@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrDataNotFound = errors.New("Data Not Found")
+	ErrExist        = errors.New("Data already exist")
 )
 
 type ErrRes struct {
@@ -40,9 +41,21 @@ func ErrNotFound(msg string) *ErrRes {
 	}
 }
 
+func ErrConflict(msg string) *ErrRes {
+	return &ErrRes{
+		Message: msg,
+		Status:  http.StatusConflict,
+		Error:   "That product already exist",
+	}
+}
+
 func CheckErr(err error, msg string) *ErrRes {
 	if err == ErrDataNotFound {
 		return ErrNotFound(msg + " Not Found")
+	}
+
+	if err == ErrExist {
+		return ErrConflict("Insert a Unique " + msg)
 	}
 
 	return ErrInternalServerErr("Some thing went wrong")

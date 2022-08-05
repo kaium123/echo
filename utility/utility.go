@@ -1,5 +1,33 @@
 package utility
 
+import (
+	"encoding/json"
+
+	"github.com/go-playground/validator/v10"
+)
+
+func StructToStruct(input interface{}, output interface{}) error {
+	if b, err := json.Marshal(input); err == nil {
+		return json.Unmarshal(b, &output)
+	} else {
+		return err
+	}
+}
+
+func ValidationMessage(err error) map[string]string {
+
+	ErrorMessage := make(map[string]string)
+	for _, err := range err.(validator.ValidationErrors) {
+		str := err.StructField() + " must be " + err.Tag() + " " + err.Param()
+		fieldName := err.StructField()
+		ErrorMessage[fieldName] = str
+
+	}
+
+	return ErrorMessage
+
+}
+
 // var validate = validator.New()
 
 // func CheckJsonBody(req model.Product) []string {
